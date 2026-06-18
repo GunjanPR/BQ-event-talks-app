@@ -299,11 +299,106 @@ h1, h2, h3, h4 {
     color: var(--text-primary);
 }
 
-/* Theme Toggle Button Icon States */
-html[data-theme="light"] .sun-icon { display: none; }
-html[data-theme="light"] .moon-icon { display: block; }
-html[data-theme="dark"] .sun-icon { display: block; }
-html[data-theme="dark"] .moon-icon { display: none; }
+/* Theme Toggle Switch */
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    transition: all var(--transition-normal);
+}
+
+.theme-switch-wrapper:hover {
+    border-color: var(--border-hover);
+}
+
+.theme-label-text {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.theme-switch {
+    display: inline-block;
+    height: 22px;
+    position: relative;
+    width: 42px;
+}
+
+.theme-switch input {
+    display: none;
+}
+
+.slider {
+    background-color: var(--bg-input);
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: var(--transition-normal);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+    border: 1px solid var(--border-color);
+}
+
+.slider:before {
+    background-color: var(--text-primary);
+    bottom: 2px;
+    content: "";
+    height: 16px;
+    left: 2px;
+    position: absolute;
+    transition: var(--transition-normal);
+    width: 16px;
+    z-index: 2;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Checked states (Light Mode selected) */
+input:checked + .slider {
+    background-color: var(--primary-light);
+    border-color: var(--primary-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+    background-color: var(--primary-color);
+}
+
+/* Icons inside slider */
+.slider-sun, .slider-moon {
+    color: var(--text-muted);
+    z-index: 1;
+    transition: color var(--transition-fast);
+    pointer-events: none;
+}
+
+input:checked + .slider .slider-sun {
+    color: var(--primary-color);
+}
+
+input:not(:checked) + .slider .slider-moon {
+    color: var(--accent-color);
+}
+
 
 /* Spinner Style */
 .spinner-container {

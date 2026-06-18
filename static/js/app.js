@@ -18,7 +18,7 @@ const DOM = {
     notesContainer: document.getElementById('notes-container'),
     refreshBtn: document.getElementById('refresh-btn'),
     exportCsvBtn: document.getElementById('export-csv-btn'),
-    themeToggle: document.getElementById('theme-toggle'),
+    themeCheckbox: document.getElementById('theme-checkbox'),
     searchInput: document.getElementById('search-input'),
     searchClear: document.getElementById('search-clear'),
     categoryPills: document.getElementById('category-pills'),
@@ -63,7 +63,7 @@ function setupEventListeners() {
     DOM.exportCsvBtn.addEventListener('click', () => exportToCSV());
     
     // Theme toggler
-    DOM.themeToggle.addEventListener('click', toggleTheme);
+    DOM.themeCheckbox.addEventListener('change', toggleTheme);
     
     // Realtime Search
     DOM.searchInput.addEventListener('input', (e) => {
@@ -110,11 +110,14 @@ function setupEventListeners() {
 function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    if (DOM.themeCheckbox) {
+        DOM.themeCheckbox.checked = (savedTheme === 'light');
+    }
 }
 
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+function toggleTheme(e) {
+    const isLight = e.target.checked;
+    const newTheme = isLight ? 'light' : 'dark';
     
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
