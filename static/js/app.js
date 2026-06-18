@@ -17,6 +17,7 @@ let state = {
 const DOM = {
     notesContainer: document.getElementById('notes-container'),
     refreshBtn: document.getElementById('refresh-btn'),
+    exportCsvBtn: document.getElementById('export-csv-btn'),
     themeToggle: document.getElementById('theme-toggle'),
     searchInput: document.getElementById('search-input'),
     searchClear: document.getElementById('search-clear'),
@@ -57,6 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
     // Refresh feed
     DOM.refreshBtn.addEventListener('click', () => fetchReleaseNotes(true));
+    
+    // Export CSV
+    DOM.exportCsvBtn.addEventListener('click', () => exportToCSV());
     
     // Theme toggler
     DOM.themeToggle.addEventListener('click', toggleTheme);
@@ -306,14 +310,28 @@ function renderNotes() {
                             <line x1="10" y1="14" x2="21" y2="3"></line>
                         </svg>
                     </a>
-                    <button class="btn btn-secondary btn-sm tweet-trigger-btn" data-id="${note.id}">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                        </svg>
-                        Tweet Note
-                    </button>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary btn-sm copy-trigger-btn" title="Copy plain-text release note to clipboard">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span class="copy-btn-label">Copy</span>
+                        </button>
+                        <button class="btn btn-secondary btn-sm tweet-trigger-btn" data-id="${note.id}">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                            Tweet
+                        </button>
+                    </div>
                 </footer>
             `;
+            
+            // Wire up Copy Note click handler
+            card.querySelector('.copy-trigger-btn').addEventListener('click', (e) => {
+                copyNoteText(note, e.currentTarget);
+            });
             
             // Wire up Tweet Note click handler
             card.querySelector('.tweet-trigger-btn').addEventListener('click', () => {
@@ -509,4 +527,94 @@ function publishTweet() {
 function capitalize(str) {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Copy a single note's plain-text representation to clipboard
+async function copyNoteText(note, buttonElement) {
+    const textToCopy = `BigQuery Release [${note.date}] - ${note.category.toUpperCase()}:\n${note.text}\n\nSource: ${note.link}`;
+    const label = buttonElement.querySelector('.copy-btn-label');
+    
+    try {
+        await navigator.clipboard.writeText(textToCopy);
+        buttonElement.classList.add('btn-success');
+        if (label) label.textContent = 'Copied!';
+        
+        setTimeout(() => {
+            buttonElement.classList.remove('btn-success');
+            if (label) label.textContent = 'Copy';
+        }, 2000);
+    } catch (err) {
+        console.error('Failed to copy card: ', err);
+        alert('Could not copy to clipboard automatically.');
+    }
+}
+
+// Get the notes list currently filtered by category and search query
+function getFilteredNotes() {
+    let filtered = state.releaseNotes.filter(note => {
+        const matchesCategory = state.activeCategory === 'All' || 
+            note.category.toLowerCase() === state.activeCategory.toLowerCase();
+            
+        const matchesSearch = !state.searchQuery || 
+            note.category.toLowerCase().includes(state.searchQuery) ||
+            note.date.toLowerCase().includes(state.searchQuery) ||
+            note.text.toLowerCase().includes(state.searchQuery);
+            
+        return matchesCategory && matchesSearch;
+    });
+    
+    filtered.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return state.sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+    
+    return filtered;
+}
+
+// Export the currently filtered notes as a CSV file
+function exportToCSV() {
+    const filtered = getFilteredNotes();
+    if (filtered.length === 0) {
+        alert('No notes available to export with current filters.');
+        return;
+    }
+    
+    const headers = ['Date', 'Category', 'Plain Text Description', 'Source URL'];
+    
+    const escapeCSV = (value) => {
+        if (value === null || value === undefined) return '';
+        let str = String(value);
+        str = str.replace(/"/g, '""'); // Escape double quotes
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            str = `"${str}"`; // Wrap values containing commas, quotes, or newlines
+        }
+        return str;
+    };
+    
+    const csvRows = [
+        headers.join(','),
+        ...filtered.map(note => [
+            note.date,
+            note.category,
+            note.text,
+            note.link
+        ].map(escapeCSV).join(','))
+    ];
+    
+    const csvContent = csvRows.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const dateStr = new Date().toISOString().split('T')[0];
+    const categoryName = state.activeCategory.toLowerCase().replace(/\s+/g, '_');
+    
+    const downloadLink = document.createElement('a');
+    downloadLink.setAttribute('href', url);
+    downloadLink.setAttribute('download', `bigquery_release_notes_${categoryName}_${dateStr}.csv`);
+    downloadLink.style.visibility = 'hidden';
+    
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
 }

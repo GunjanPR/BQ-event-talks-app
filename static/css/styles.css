@@ -733,6 +733,18 @@ html[data-theme="dark"] .pill-count {
     color: var(--primary-color);
 }
 
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Success styling for temporary copied state */
+.btn-success {
+    background-color: var(--badge-bg-feature) !important;
+    color: var(--badge-text-feature) !important;
+    border-color: var(--color-feature) !important;
+}
+
 /* ==========================================================================
    Loading Skeletons
    ========================================================================== */
