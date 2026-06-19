@@ -141,6 +141,7 @@ def fetch_feed_data():
 def get_release_notes(force_refresh=False):
     """
     Retrieves release notes, utilizing local JSON cache file if valid.
+    Returns a tuple of (items, is_stale).
     """
     now = time.time()
     
@@ -153,7 +154,7 @@ def get_release_notes(force_refresh=False):
             cache_time = cache_data.get('timestamp', 0)
             if now - cache_time < CACHE_EXPIRY_SECONDS:
                 logging.info("Serving release notes from local cache")
-                return cache_data.get('items', [])
+                return cache_data.get('items', []), False
         except Exception as e:
             logging.error(f"Error reading cache file: {e}. Re-fetching.")
             
@@ -169,7 +170,7 @@ def get_release_notes(force_refresh=False):
         with open(CACHE_FILE, 'w', encoding='utf-8') as f:
             json.dump(cache_data, f, ensure_ascii=False, indent=2)
             
-        return items
+        return items, False
     except Exception as e:
         logging.error(f"Failed to fetch or parse release notes feed: {e}")
         # If fetch fails, try to fall back to stale cache if available
@@ -178,7 +179,7 @@ def get_release_notes(force_refresh=False):
                 logging.warning("Fetch failed. Falling back to stale cache.")
                 with open(CACHE_FILE, 'r', encoding='utf-8') as f:
                     cache_data = json.load(f)
-                return cache_data.get('items', [])
+                return cache_data.get('items', []), True
             except Exception as cache_err:
                 logging.error(f"Failed to read fallback cache: {cache_err}")
         raise e
@@ -193,10 +194,11 @@ def index():
 def api_release_notes():
     force_refresh = request.args.get('refresh', 'false').lower() == 'true'
     try:
-        items = get_release_notes(force_refresh=force_refresh)
+        items, is_stale = get_release_notes(force_refresh=force_refresh)
         return jsonify({
             'success': True,
             'items': items,
+            'stale': is_stale,
             'cached_at': os.path.getmtime(CACHE_FILE) if os.path.exists(CACHE_FILE) else time.time()
         })
     except Exception as e:

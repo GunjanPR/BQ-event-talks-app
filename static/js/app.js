@@ -26,6 +26,9 @@ const DOM = {
     emptyState: document.getElementById('empty-state'),
     emptyAction: document.getElementById('empty-action'),
     cacheInfo: document.getElementById('cache-info'),
+    staleBanner: document.getElementById('stale-banner'),
+    staleBannerText: document.getElementById('stale-banner-text'),
+    toastContainer: document.getElementById('toast-container'),
     
     // Stats
     statTotal: document.getElementById('stat-total'),
@@ -43,7 +46,8 @@ const DOM = {
     charCounter: document.getElementById('char-counter'),
     copyTweetBtn: document.getElementById('copy-tweet-btn'),
     copyBtnText: document.getElementById('copy-btn-text'),
-    publishTweetBtn: document.getElementById('publish-tweet-btn')
+    publishTweetBtn: document.getElementById('publish-tweet-btn'),
+    autofitTweetBtn: document.getElementById('autofit-tweet-btn')
 };
 
 // ==========================================================================
@@ -79,6 +83,16 @@ function setupEventListeners() {
         DOM.searchInput.focus();
     });
     
+    // Keyboard shortcut to focus search: '/' key
+    window.addEventListener('keydown', (e) => {
+        const activeTag = document.activeElement.tagName.toLowerCase();
+        if (e.key === '/' && activeTag !== 'input' && activeTag !== 'textarea') {
+            e.preventDefault();
+            DOM.searchInput.focus();
+            showToast('Search bar focused', 'info');
+        }
+    });
+    
     // Sorting
     DOM.sortSelect.addEventListener('change', (e) => {
         state.sortOrder = e.target.value;
@@ -96,6 +110,9 @@ function setupEventListeners() {
     
     // Textarea input for character counter
     DOM.tweetTextarea.addEventListener('input', updateCharCount);
+    
+    // Auto-fit Tweet text
+    DOM.autofitTweetBtn.addEventListener('click', autofitTweetDraft);
     
     // Copy Tweet
     DOM.copyTweetBtn.addEventListener('click', copyTweetText);
@@ -152,6 +169,15 @@ async function fetchReleaseNotes(forceRefresh = false) {
             if (data.cached_at) {
                 const date = new Date(data.cached_at * 1000);
                 DOM.cacheInfo.textContent = `Cached at: ${date.toLocaleTimeString()} ${date.toLocaleDateString()}`;
+            }
+            
+            // Handle stale warning banner
+            if (data.stale) {
+                DOM.staleBanner.classList.remove('hidden');
+                const cacheTime = data.cached_at ? new Date(data.cached_at * 1000).toLocaleTimeString() : 'unknown';
+                DOM.staleBannerText.textContent = `Offline: serving cached release notes from ${cacheTime}.`;
+            } else {
+                DOM.staleBanner.classList.add('hidden');
             }
             
             updateStats();
@@ -286,6 +312,18 @@ function renderNotes() {
             card.setAttribute('data-category', note.category);
             
             const categoryClass = `badge-${note.category.toLowerCase()}`;
+            const relativeDate = getRelativeTimeString(note.date);
+            const displayDate = relativeDate ? `${note.date} (${relativeDate})` : note.date;
+            
+            let renderedHtml = note.html;
+            if (state.searchQuery) {
+                const escapedQuery = escapeRegExp(state.searchQuery);
+                const highlightRegex = new RegExp(`(${escapedQuery})(?![^<>]*>)`, 'gi');
+                renderedHtml = renderedHtml.replace(highlightRegex, '<mark class="highlight">$1</mark>');
+            }
+            
+            const isCollapsible = note.text.length > 250;
+            const bodyClass = isCollapsible ? 'card-body collapsible' : 'card-body';
             
             card.innerHTML = `
                 <div>
@@ -298,12 +336,20 @@ function renderNotes() {
                                 <line x1="8" y1="2" x2="8" y2="6"></line>
                                 <line x1="3" y1="10" x2="21" y2="10"></line>
                             </svg>
-                            ${note.date}
+                            ${displayDate}
                         </span>
                     </header>
-                    <div class="card-body">
-                        ${note.html}
+                    <div class="${bodyClass}">
+                        ${renderedHtml}
                     </div>
+                    ${isCollapsible ? `
+                    <button class="read-more-btn">
+                        Read More
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    ` : ''}
                 </div>
                 <footer class="card-footer">
                     <a href="${note.link}" target="_blank" rel="noopener noreferrer" class="link-icon-btn" title="View official release notes source page">
@@ -330,6 +376,17 @@ function renderNotes() {
                     </div>
                 </footer>
             `;
+            
+            // Wire up Read More click handler
+            if (isCollapsible) {
+                card.querySelector('.read-more-btn').addEventListener('click', (e) => {
+                    const body = card.querySelector('.card-body');
+                    const isExpanded = body.classList.toggle('expanded');
+                    e.currentTarget.innerHTML = isExpanded 
+                        ? `Read Less <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`
+                        : `Read More <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+                });
+            }
             
             // Wire up Copy Note click handler
             card.querySelector('.copy-trigger-btn').addEventListener('click', (e) => {
@@ -484,6 +541,7 @@ async function copyTweetText() {
         
         DOM.copyBtnText.textContent = 'Copied!';
         DOM.copyTweetBtn.classList.add('btn-success');
+        showToast('Tweet draft copied to clipboard!', 'success');
         
         // Reset button state after delay
         setTimeout(() => {
@@ -492,7 +550,7 @@ async function copyTweetText() {
         }, 2000);
     } catch (err) {
         console.error('Failed to copy text: ', err);
-        alert('Failed to copy to clipboard. Please select the text manually.');
+        showToast('Failed to copy to clipboard.', 'error');
     }
 }
 
@@ -541,6 +599,7 @@ async function copyNoteText(note, buttonElement) {
         await navigator.clipboard.writeText(textToCopy);
         buttonElement.classList.add('btn-success');
         if (label) label.textContent = 'Copied!';
+        showToast('Release note copied!', 'success');
         
         setTimeout(() => {
             buttonElement.classList.remove('btn-success');
@@ -548,7 +607,7 @@ async function copyNoteText(note, buttonElement) {
         }, 2000);
     } catch (err) {
         console.error('Failed to copy card: ', err);
-        alert('Could not copy to clipboard automatically.');
+        showToast('Failed to copy note.', 'error');
     }
 }
 
@@ -579,7 +638,7 @@ function getFilteredNotes() {
 function exportToCSV() {
     const filtered = getFilteredNotes();
     if (filtered.length === 0) {
-        alert('No notes available to export with current filters.');
+        showToast('No notes available to export.', 'info');
         return;
     }
     
@@ -620,4 +679,83 @@ function exportToCSV() {
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
+    showToast(`Exported ${filtered.length} notes to CSV!`, 'success');
+}
+
+// Helper: Escape regex special characters
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Helper: Show custom toast notification
+function showToast(message, type = 'success') {
+    if (!DOM.toastContainer) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    DOM.toastContainer.appendChild(toast);
+    
+    // Auto-remove toast after transition (3 seconds total)
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Helper: Generate a relative date string (e.g. "2 days ago")
+function getRelativeTimeString(dateString) {
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return null;
+        
+        const now = new Date();
+        // Clear time of day for exact date calculations
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+        const diffTime = today - target;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays > 1 && diffDays < 30) return `${diffDays} days ago`;
+        
+        // Return months ago if longer
+        const diffMonths = Math.floor(diffDays / 30);
+        if (diffMonths === 1) return '1 month ago';
+        if (diffMonths > 1) return `${diffMonths} months ago`;
+        
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Helper: Auto-fit tweet compose text to 280-character limit
+function autofitTweetDraft() {
+    if (!state.selectedNote) return;
+    
+    const note = state.selectedNote;
+    const emoji = getCategoryEmoji(note.category);
+    const header = `${emoji} BigQuery Release [${note.date}] - ${note.category.toUpperCase()}:\n`;
+    const link = note.link;
+    
+    const maxTotalLength = 280;
+    const urlFixedLength = 23;
+    
+    // Total static template length
+    const templateLength = header.length + 3 + urlFixedLength;
+    const textBudget = maxTotalLength - templateLength;
+    
+    let noteText = note.text;
+    if (noteText.length > textBudget) {
+        noteText = noteText.substring(0, textBudget - 3).trim() + '...';
+        showToast('Text auto-fitted to 280 characters', 'info');
+    } else {
+        showToast('Text already fits in character limit', 'info');
+    }
+    
+    DOM.tweetTextarea.value = `${header}${noteText}\n\n${link}`;
+    updateCharCount();
 }

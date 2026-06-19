@@ -8,38 +8,45 @@ The application fetches release updates directly from the official Google Cloud 
 
 ## 🎯 Features
 
-1. **Granular Feed Parsing & Caching:**
+1. **Granular Feed Ingestion & Caching:**
    - Aggregates the official Atom XML feed (`https://docs.cloud.google.com/feeds/bigquery-release-notes.xml`).
    - Grouping logic splits daily updates into individual items (e.g. separate card entries for `Feature`, `Issue`, `Deprecated`, `Changed`, and `General`).
    - Local JSON-based caching (`feed_cache.json`) preserves data for 1 hour to ensure rapid loading.
    - Interactive manual refresh bypasses cache to poll fresh data immediately.
+   - **Offline Safeguard Banner:** If a remote network fetch fails, the app displays a warning banner (e.g. *Offline: serving cached release notes from 7:03 PM*) and lets you continue browsing cached data.
 
-2. **Premium Visual Styling:**
+2. **Premium Visual Styling & UX Details:**
    - Responsive CSS Grid adapting from mobile single-columns to desktop dual-columns.
    - Distinct, tailormade badge styling and hover borders for different categories (Feature = green, Issue = red, Deprecated = amber).
-   - Graceful theme toggle (Dark / Light) with system preference matching, persisting theme states in local storage.
+   - **Theme Toggle Switch:** A sliding toggle switch in the header with moving sun/moon icons to toggle between Dark / Light modes, saving state in local storage.
+   - **Collapsible Notes:** Automatically folds cards with descriptions longer than 250 characters and adds a **"Read More" / "Read Less"** height toggle with bottom gradients to maintain layout symmetry.
+   - **Relative Dates:** Date badges show relative timestamps (e.g. *Yesterday*, *3 days ago*, *Today*) alongside raw dates.
    - Visual skeleton loading screens while fetching data.
 
-3. **Dynamic Filters & Search:**
+3. **Dynamic Filters, Search & Navigation:**
    - Dynamic extraction of categories to generate interface pill filters.
    - Full-text search across categories, dates, and contents.
+   - **Search Highlight Matches:** Search keyword occurrences are highlighted with subtle translucent golden markers (`<mark>`).
+   - **Keyboard Shortcut:** Pressing the `/` key instantly focuses your cursor onto the search input.
    - Real-time statistics counters showing release totals by category.
    - Multi-directional sorting (Newest first / Oldest first).
 
-4. **Selective Twitter/X Integration:**
-   - Select-to-Tweet popup draft window.
-   - Custom character counter mimicking Twitter/X's official counting specifications (counting any URL as exactly 23 characters).
-   - Automated message composition and smart truncation with trailing ellipses (`...`).
-   - Integrates with Twitter Web Intent for immediate publishing.
+4. **Utilities & Social Integrations:**
+   - **Copy Note (Per Card):** A copy button on each card formats and copies the plain text representation to your clipboard.
+   - **Export to CSV:** Exports currently filtered release notes directly to a CSV spreadsheet with custom category and timestamped filenames.
+   - **Non-blocking Toast Popups:** Subtle slide-in confirmation toasts replace standard alerts for all copy and export actions.
+   - **Select-to-Tweet Modal:** When clicking "Tweet", a detailed composer modal displays.
+   - **Auto-fit Compose Text:** If your edits exceed X's 280-character limit, clicking the **"Auto-fit Draft"** button trims description text while retaining headings and links.
+   - **Twitter Intent:** Integrates with the official web intent popups for immediate publishing.
 
 ---
 
 ## 📂 Project Structure
 
 - `app.py` — Flask backend handling feed ingestion, XML regex grouping, caching, and JSON endpoints.
-- `templates/index.html` — Dynamic HTML layout containing filters, search fields, stats, cards, and modal components.
-- `static/css/styles.css` — Core responsive styling with color variable custom tokens, hover animations, and light/dark theme rules.
-- `static/js/app.js` — Client controller managing fetch, dynamic elements rendering, searches, text copying, and Twitter intent workflows.
+- `templates/index.html` — Dynamic HTML layout containing filters, search fields, stats, cards, stale alert banner, and modal components.
+- `static/css/styles.css` — Core responsive styling with color variable custom tokens, hover animations, light/dark theme rules, toast slide-ins, and scrollbars.
+- `static/js/app.js` — Client controller managing fetch, dynamic elements rendering, searches, text copying, keyboard shortcuts, auto-fit, and Twitter intent workflows.
 - `feed_cache.json` — Local temporary JSON data store (ignored by `.gitignore`).
 
 ---

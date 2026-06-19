@@ -945,7 +945,7 @@ html[data-theme="light"] .skeleton-card::after {
     grid-column: 1 / -1;
 }
 
-.empty-state.hidden {
+.hidden {
     display: none !important;
 }
 
@@ -1098,12 +1098,40 @@ html[data-theme="light"] .skeleton-card::after {
     gap: 0.5rem;
 }
 
-.textarea-label {
+.textarea-label-row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.textarea-label {
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-secondary);
+}
+
+.textarea-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.btn-text-only {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color var(--transition-fast);
+}
+
+.btn-text-only:hover {
+    color: var(--primary-hover);
+    text-decoration: none;
 }
 
 .char-counter {
@@ -1194,3 +1222,157 @@ textarea:focus {
         gap: 0.25rem;
     }
 }
+
+/* ==========================================================================
+   Stale Feed Alert Banner
+   ========================================================================== */
+.stale-banner {
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid var(--color-deprecated);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.stale-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--badge-text-deprecated);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.stale-banner svg {
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Search Highlight
+   ========================================================================== */
+mark.highlight {
+    background-color: rgba(251, 191, 36, 0.35); /* Translucent golden glow */
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 3px;
+    box-shadow: 0 0 4px rgba(251, 191, 36, 0.2);
+}
+
+/* ==========================================================================
+   Collapsible Note Card Body
+   ========================================================================== */
+.card-body.collapsible {
+    position: relative;
+    max-height: 140px;
+    overflow: hidden;
+    transition: max-height var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Fade out overlay at bottom of collapsed card */
+.card-body.collapsible::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: linear-gradient(to top, var(--bg-card), transparent);
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+}
+
+.card-body.collapsible.expanded {
+    max-height: 1000px; /* Large size to allow full height */
+}
+
+.card-body.collapsible.expanded::after {
+    opacity: 0;
+}
+
+/* Toggle expansion button styles */
+.read-more-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    margin-top: -0.75rem;
+    margin-bottom: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: color var(--transition-fast);
+}
+
+.read-more-btn:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Toast Notification System
+   ========================================================================== */
+.toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 2000;
+    pointer-events: none;
+}
+
+.toast {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: auto;
+    animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1), fadeOut 0.3s ease 2.7s forwards;
+    position: relative;
+    overflow: hidden;
+}
+
+.toast::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 4px;
+    background-color: var(--primary-color);
+}
+
+.toast-success::before { background-color: var(--color-feature); }
+.toast-error::before { background-color: var(--color-issue); }
+.toast-info::before { background-color: var(--color-general); }
+
+@keyframes slideIn {
+    from {
+        transform: translateY(1rem) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
